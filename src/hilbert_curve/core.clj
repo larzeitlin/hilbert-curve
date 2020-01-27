@@ -41,18 +41,22 @@
     (map points-to-px-fn cells)))
 
 (defn setup []
-  (q/frame-rate 30)
-  (q/color-mode :hsb)
-  {:points-px (hilbert-points-to-canvas 6 (q/width) 10)})
+  (let [iterations 6
+        margin 10
+        n-points (Math/pow (Math/pow 2 iterations) 2)]
+    (q/frame-rate 100)
+    (q/color-mode :hsb)
+    {:points-px (vec (hilbert-points-to-canvas iterations (q/width) margin))
+     :n-points n-points
+     :current-point 1}))
 
-  (defn update-state [state]
-    ; move along, nothing to see here
-  state)
+(defn update-state [state]
+  (update state :current-point (fn [p] (mod (inc p) (:n-points state)))))
 
 (defn draw-state [state]
   (q/background 240)
   (q/fill 0)
-  (d/draw-line (:points-px state)))
+  (d/draw-line (subvec (:points-px state) 0 (:current-point state))))
 
 (q/defsketch hilbert-curve
   :title "Psuedo Hilbert curve"
