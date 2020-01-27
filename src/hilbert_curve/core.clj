@@ -1,8 +1,7 @@
 (ns hilbert-curve.core
   (:require [quil.core :as q]
-            [quil.middleware :as m]))
-
-(def config {:margin 10})
+            [quil.middleware :as m]
+            [hilbert-curve.drawing :as d]))
 
 (def rules {:A {:path [[0 0] [0 1] [1 1] [1 0]]
                 :next-iteration [:D :A :A :B]}
@@ -12,33 +11,6 @@
                 :next-iteration [:B :C :C :D]}
             :D {:path [[0 0] [1 0] [1 1] [0 1]]
                  :next-iteration [:A :D :D :C]}})
-
-
-(defn point-to-pix-converter [root-n-points width margin]
-  (let [px-by-point (apply merge
-                           (for [x (range root-n-points)
-                                 y (range root-n-points)
-                                 :let [grid-size (- width (* 2 margin))
-                                       unit-size (/ grid-size root-n-points)
-                                       adjust-to-center 0.5]]
-                             {[x y] [(+ margin (* unit-size (+ adjust-to-center x)))
-                                     (+ margin (* unit-size (+ adjust-to-center y)))]}))]
-    (fn [[x y]] (get px-by-point [x y]))))
-
-(defn draw-line [points]
-  (when (seq points)
-    (q/fill 0)
-    (q/stroke 0)
-    (q/stroke-weight 5)
-    (doall (map (fn [[[ax ay] [bx by]]]
-                  (q/line ax ay bx by))
-                (partition 2 1 points)))))
-
-(defn pattern-map [pattern-key rules]
-  (let [rule (pattern-key rules)]
-    (merge (map (fn [p i] {:cell p :pattern i})
-                (:path rule)
-                (:next-iteration rule)))))
 
 (defn rule-applicator [rules {:keys [cell pattern]}]
   (let [meta-cell (map (partial * 2) cell)
@@ -60,27 +32,27 @@
           (recur (dec counter)
                  (resolve-next-layer cells-to-patterns))))))
 
+(defn hilbert-points-to-canvas [iterations width margin]
+  (let [points-to-px-fn (d/point-to-pix-converter iterations
+                                                  width
+                                                  margin)
+        points (make-points rules iterations)
+        cells (map :cell points)]
+    (map points-to-px-fn cells)))
 
 (defn setup []
   (q/frame-rate 30)
   (q/color-mode :hsb)
-  (let [iterations 6
-        points-to-px-fn (point-to-pix-converter (Math/pow 2 iterations)
-                                                (q/width)
-                                                (:margin config))
-        points (make-points rules iterations)
-        cells (map :cell points)
-        points-px (map points-to-px-fn cells)]
-    {:points-px points-px}))
+  {:points-px (hilbert-points-to-canvas 6 (q/width) 10)})
 
-(defn update-state [state]
+  (defn update-state [state]
+    ; move along, nothing to see here
   state)
 
 (defn draw-state [state]
   (q/background 240)
   (q/fill 0)
-  (draw-line (:points-px state)))
-
+  (d/draw-line (:points-px state)))
 
 (q/defsketch hilbert-curve
   :title "Psuedo Hilbert curve"
